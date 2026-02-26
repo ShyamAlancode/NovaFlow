@@ -1,0 +1,48 @@
+{
+  "tested_at": "2026-02-26T17:57:20.786328",
+  "model": "amazon.nova-pro-v1:0",
+  "extended_thinking": true,
+  "web_grounding": true,
+  "websites": {
+    "https://wikipedia.org": {
+      "status": "success",
+      "score": 92,
+      "wcag_level": "AAA - Enhanced",
+      "issues_count": 2,
+      "critical": 1,
+      "major": 1
+    },
+    "https://github.com": {
+      "status": "success",
+      "score": 95,
+      "wcag_level": "AAA - Enhanced",
+      "issues_count": 1,
+      "critical": 1,
+      "major": 0
+    },
+    "https://bbc.co.uk": {
+      "status": "success",
+      "score": 90,
+      "wcag_level": "AAA - Enhanced",
+      "issues_count": 3,
+      "critical": 1,
+      "major": 2
+    },
+    "https://airbnb.com": {
+      "status": "success",
+      "score": 95,
+      "wcag_level": "AAA - Enhanced",
+      "issues_count": 1,
+      "critical": 1,
+      "major": 0
+    },
+    "https://spotify.com": {
+      "status": "success",
+      "score": 92,
+      "wcag_level": "AAA - Enhanced",
+      "issues_count": 2,
+      "critical": 1,
+      "major": 1
+    }
+  }
+}
