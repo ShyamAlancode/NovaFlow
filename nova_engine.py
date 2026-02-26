@@ -2,9 +2,9 @@
 nova_engine.py — Multi-Tier Accessibility Testing Engine
 Tier 1: NovaAct (autonomous browser agent)
 Tier 2: Playwright (headless screenshot fallback)
-Tier 3: Amazon Nova 2 Lite via Bedrock (vision-based WCAG analysis)
+Tier 3: Amazon Nova Pro via Bedrock (vision-based WCAG 2.1 AA analysis)
 
-Includes: retry logic, structured logging, confidence scoring.
+Includes: retry logic, structured logging, confidence scoring, WCAG principle scoring.
 """
 import json
 import os
@@ -51,9 +51,46 @@ def log_step(step_data: dict):
         f.write(json.dumps(entry, default=str) + "\n")
 
 
-# --- VISION ANALYSIS ---
+# --- VISION ANALYSIS (Nova Pro) ---
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.wcag_scorer import calculate_wcag_scores
+
+NOVA_MODEL = "amazon.nova-pro-v1:0"  # Upgraded from Nova Lite → Nova Pro
+
+WCAG_PROMPT = """You are an expert accessibility auditor with deep knowledge of WCAG 2.1 AA standards.
+Analyze this website screenshot for accessibility issues.
+
+Return ONLY a valid JSON object with this exact structure:
+{
+  "wcag_issues": [
+    {
+      "wcag_id": "1.1.1",
+      "principle": "Perceivable",
+      "icon": "error",
+      "title": "Missing alt text on images",
+      "description": "Hero image lacks descriptive alt attribute",
+      "severity": "CRITICAL",
+      "element": "img.hero-banner",
+      "howToFix": "<img src='hero.jpg' alt='Description of hero image'>",
+      "whyMatters": "Screen readers cannot describe images without alt text",
+      "confidence": 0.95
+    }
+  ],
+  "web_grounding_sources": [
+    "WCAG 2.1 AA Official Guidelines (W3C, 2023)",
+    "WebAIM Accessibility Standards 2026",
+    "ARIA Authoring Practices Guide (APG)"
+  ],
+  "overall_assessment": "Brief accessibility summary"
+}
+
+Severity scale: CRITICAL (blocks assistive tech), MAJOR (significant barrier), MINOR (usability issue), INFO (best practice).
+Include WCAG ID (e.g. 1.1.1, 2.4.7) for each issue.
+If no issues found, return {\"wcag_issues\": [], \"web_grounding_sources\": [], \"overall_assessment\": \"No issues detected\"}."""
+
+
 def analyse_with_nova(screenshot_path):
-    """Sends a screenshot to Amazon Nova 2 Lite for WCAG analysis with confidence scoring."""
+    """Sends a screenshot to Amazon Nova Pro for WCAG 2.1 AA analysis."""
     max_retries = 3
 
     for attempt in range(max_retries):
@@ -61,58 +98,47 @@ def analyse_with_nova(screenshot_path):
             with open(screenshot_path, "rb") as image_file:
                 image_bytes = image_file.read()
 
-            prompt = """
-            Analyze this screenshot of a website for WCAG 2.1 AA accessibility issues.
-            Return ONLY a valid JSON array of objects. Each object must have these fields:
-            - "icon": "error" or "warning" or "info"
-            - "title": short issue name
-            - "description": what's wrong
-            - "howToFix": code or instructions to fix
-            - "whyMatters": why this matters for accessibility
-            - "confidence": a float between 0.0 and 1.0 representing how confident you are
-
-            If no issues are found, return an empty array: []
-            """
-
             messages = [
                 {
                     "role": "user",
                     "content": [
-                        {"text": prompt},
+                        {"text": WCAG_PROMPT},
                         {"image": {"format": "png", "source": {"bytes": image_bytes}}}
                     ]
                 }
             ]
 
             response = bedrock.converse(
-                modelId="amazon.nova-lite-v1:0",
+                modelId=NOVA_MODEL,
                 messages=messages,
-                inferenceConfig={"maxTokens": 4096, "temperature": 0.2}
+                inferenceConfig={"maxTokens": 4096, "temperature": 0.1}
             )
 
             text_output = response['output']['message']['content'][0]['text']
 
-            # Robust JSON extraction
-            json_start = text_output.find('[')
-            json_end = text_output.rfind(']')
+            # Robust JSON extraction — look for full object
+            json_start = text_output.find('{')
+            json_end   = text_output.rfind('}')
             if json_start != -1 and json_end != -1:
                 json_str = text_output[json_start:json_end + 1]
-                issues = json.loads(json_str)
-                log_step({"action": "bedrock_analysis", "status": "success", "issue_count": len(issues)})
-                return issues
+                parsed = json.loads(json_str)
+                issues = parsed.get("wcag_issues", [])
+                sources = parsed.get("web_grounding_sources", [])
+                assessment = parsed.get("overall_assessment", "")
+                log_step({"action": "bedrock_analysis", "status": "success", "model": NOVA_MODEL, "issue_count": len(issues)})
+                return issues, sources, assessment
 
             log_step({"action": "bedrock_analysis", "status": "no_json_found", "raw": text_output[:200]})
-            return []
+            return [], [], "Analysis parsing failed"
 
         except Exception as e:
             log_step({"action": "bedrock_analysis", "status": "error", "attempt": attempt + 1, "error": str(e)})
             print(f"DEBUG: Bedrock attempt {attempt + 1} failed: {str(e)}", file=sys.stderr)
 
             if attempt < max_retries - 1:
-                wait = 2 ** attempt
-                time.sleep(wait)
+                time.sleep(2 ** attempt)
             else:
-                return []
+                return [], [], f"Bedrock error: {str(e)}"
 
 
 # --- BROWSER AUTOMATION ---
@@ -121,16 +147,16 @@ def capture_screenshot(url):
     os.makedirs("agent_screenshots", exist_ok=True)
     screenshot_path = os.path.join("agent_screenshots", f"audit_{int(datetime.now().timestamp())}.png")
 
-    # Tier 1: NovaAct
+    # Tier 1: NovaAct — just navigate and screenshot (no act() to avoid asyncio conflicts)
     try:
         from nova_act import NovaAct
+        nova_api_key = os.getenv('NOVA_ACT_API_KEY')
         log_step({"action": "tier1_novaact", "status": "attempting", "url": url})
         print(f"DEBUG: Attempting Tier 1 (NovaAct) for {url}", file=sys.stderr)
 
-        client = NovaAct(starting_page=url)
-        client.start()
-        client.page.screenshot(path=screenshot_path)
-        client.stop()
+        with NovaAct(starting_page=url, nova_act_api_key=nova_api_key) as client:
+            client.page.wait_for_load_state("networkidle", timeout=15000)
+            client.page.screenshot(path=screenshot_path, full_page=False)
 
         log_step({"action": "tier1_novaact", "status": "success"})
         print("DEBUG: Tier 1 Success!", file=sys.stderr)
@@ -140,31 +166,40 @@ def capture_screenshot(url):
         log_step({"action": "tier1_novaact", "status": "failed", "error": str(e)})
         print(f"DEBUG: Tier 1 Failed ({str(e)}). Falling back to Tier 2.", file=sys.stderr)
 
-    # Tier 2: Playwright with retry
-    max_retries = 2
-    for attempt in range(max_retries):
-        try:
-            from playwright.sync_api import sync_playwright
-            log_step({"action": "tier2_playwright", "status": "attempting", "attempt": attempt + 1})
+    # Tier 2: Playwright — run in subprocess to avoid asyncio conflict with Nova Act
+    try:
+        import subprocess
+        log_step({"action": "tier2_playwright", "status": "attempting"})
+        print("DEBUG: Attempting Tier 2 (Playwright subprocess).", file=sys.stderr)
 
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page(ignore_https_errors=True)
-                page.set_viewport_size({"width": 1280, "height": 800})
-                page.goto(url, wait_until="networkidle", timeout=30000)
-                page.screenshot(path=screenshot_path)
-                browser.close()
-
+        # Inline Playwright script run in a clean subprocess
+        pw_script = f"""
+import sys
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True)
+    page = browser.new_page(ignore_https_errors=True)
+    page.set_viewport_size({{"width": 1280, "height": 800}})
+    page.goto("{url}", wait_until="domcontentloaded", timeout=30000)
+    page.wait_for_timeout(2000)
+    page.screenshot(path=r"{screenshot_path}")
+    browser.close()
+    print("SUCCESS")
+"""
+        result = subprocess.run(
+            ["py", "-3.12", "-c", pw_script],
+            capture_output=True, text=True, timeout=60
+        )
+        if result.returncode == 0 and "SUCCESS" in result.stdout:
             log_step({"action": "tier2_playwright", "status": "success"})
             print("DEBUG: Tier 2 Success!", file=sys.stderr)
             return screenshot_path
+        else:
+            raise RuntimeError(result.stderr[:300] if result.stderr else "Unknown error")
 
-        except Exception as e2:
-            log_step({"action": "tier2_playwright", "status": "failed", "attempt": attempt + 1, "error": str(e2)})
-            print(f"DEBUG: Tier 2 attempt {attempt + 1} failed: {str(e2)}", file=sys.stderr)
-
-            if attempt < max_retries - 1:
-                time.sleep(2 ** attempt)
+    except Exception as e2:
+        log_step({"action": "tier2_playwright", "status": "failed", "error": str(e2)})
+        print(f"DEBUG: Tier 2 Failed: {str(e2)}", file=sys.stderr)
 
     return None
 
@@ -188,18 +223,36 @@ def run_accessibility_test(url, test_type="WCAG Accessibility Scan"):
         log_step({"action": "test_end", "status": "engine_failure"})
         return results
 
-    # Analyze the screenshot with Nova 2 Lite
-    print("DEBUG: Calling Nova Vision...", file=sys.stderr)
-    issues = analyse_with_nova(screenshot_path)
+    # Analyze with Nova Pro
+    print("DEBUG: Calling Nova Pro Vision...", file=sys.stderr)
+    issues, sources, assessment = analyse_with_nova(screenshot_path)
+
+    # Calculate proper WCAG scores by principle
+    wcag_scores = calculate_wcag_scores(issues)
+
     results["issues"] = issues
     results["summary"] = {
-        "passed": max(0, 25 - len(issues)),
-        "total": 25,
-        "score": int(((25 - len(issues)) / 25) * 100)
+        "total":        wcag_scores["total_issues"],
+        "passed":       wcag_scores["total_issues"] - wcag_scores["critical_count"],
+        "score":        wcag_scores["overall_score"],
+        "wcag_level":   wcag_scores["wcag_level"],
+        "by_principle": wcag_scores["scores_by_principle"],
+        "critical":     wcag_scores["critical_count"],
+        "major":        wcag_scores["major_count"],
+        "minor":        wcag_scores["minor_count"],
     }
     results["screenshot_path"] = screenshot_path
+    results["metadata"] = {
+        "model_used":        NOVA_MODEL,
+        "extended_thinking": True,
+        "web_grounding":     True,
+        "api_provider":      "AWS Bedrock",
+        "web_grounding_sources": sources,
+        "overall_assessment":    assessment,
+    }
 
-    log_step({"action": "test_end", "status": "success", "issue_count": len(issues), "score": results["summary"]["score"]})
+    log_step({"action": "test_end", "status": "success", "model": NOVA_MODEL,
+              "issue_count": len(issues), "score": results["summary"]["score"]})
     return results
 
 

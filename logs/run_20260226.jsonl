@@ -1,0 +1,39 @@
+{"timestamp": "2026-02-26T15:29:39.705901", "action": "test_start", "url": "https://example.com", "test_type": "wcag"}
+{"timestamp": "2026-02-26T15:29:40.544346", "action": "tier1_novaact", "status": "attempting", "url": "https://example.com"}
+{"timestamp": "2026-02-26T15:29:40.552267", "action": "tier1_novaact", "status": "failed", "error": "\n**********************************************************************************************************\n* Authentication Failed With Invalid Credentials Configuration                                           *\n*                                                                                                        *\n* There are two options for authenticating with Nova Act:                                                *\n* (1) Nova Act Free Version with API keys or (2) Nova Act AWS Service with AWS credentials.              *\n*                                                                                                        *\n* To use (1) Nova Act Free Version, set the NOVA_ACT_API_KEY environment variable                        *\n* or pass in explicitly using NovaAct(nova_act_api_key=\"<YOUR KEY HERE>\", ...)                           *\n* To generate an API Key go to https://nova.amazon.com/act?tab=dev_tools                                 *\n*                                                                                                        *\n* To use (2) Nova Act AWS Service, you must use a Workflow construct. For example:                       *\n*                                                                                                        *\n* @workflow(workflow_definition_name=\"<your-workflow-name>\", model_id=\"nova-act-latest\")                 *\n* def explore_destinations():                                                                            *\n*     with NovaAct(starting_page=\"https://nova.amazon.com/act/gym/next-dot/search\") as nova:             *\n*         nova.act(\"Find flights from Boston to Wolf on Feb 22nd\")                                       *\n*                                                                                                        *\n* To create a workflow definition name, use the Nova Act CLI or go to                                    *\n* https://docs.aws.amazon.com/nova-act/latest/userguide/step-2-develop-locally.html#develop-with-aws-iam *\n*                                                                                                        *\n* Please configure one or the other in order to run your workflow.                                       *\n**********************************************************************************************************"}
+{"timestamp": "2026-02-26T15:29:40.560934", "action": "tier2_playwright", "status": "attempting", "attempt": 1}
+{"timestamp": "2026-02-26T15:29:50.407698", "action": "tier2_playwright", "status": "success"}
+{"timestamp": "2026-02-26T15:29:52.051787", "action": "bedrock_analysis", "status": "success", "issue_count": 0}
+{"timestamp": "2026-02-26T15:29:52.051787", "action": "test_end", "status": "success", "issue_count": 0, "score": 100}
+{"timestamp": "2026-02-26T15:44:10.048425", "action": "test_start", "url": "https://bbc.com", "test_type": "wcag"}
+{"timestamp": "2026-02-26T15:44:12.068883", "action": "tier1_novaact", "status": "attempting", "url": "https://bbc.com"}
+{"timestamp": "2026-02-26T15:45:00.849815", "action": "tier1_novaact", "status": "success", "steps": 2}
+{"timestamp": "2026-02-26T15:45:05.579569", "action": "bedrock_analysis", "status": "success", "issue_count": 2}
+{"timestamp": "2026-02-26T15:45:05.580570", "action": "test_end", "status": "success", "issue_count": 2, "score": 92}
+{"timestamp": "2026-02-26T15:49:24.235618", "action": "test_start", "url": "https://bbc.com", "test_type": "wcag"}
+{"timestamp": "2026-02-26T15:49:25.066200", "action": "tier1_novaact", "status": "attempting", "url": "https://bbc.com"}
+{"timestamp": "2026-02-26T15:49:49.758413", "action": "tier1_novaact", "status": "failed", "error": "\n\nActActuationError(\n    message = TargetClosedError: BrowserContext.unroute_all: Target page, context or browser has been closed\n    metadata = ActMetadata(\n        session_id = 019c9975-519f-7fd2-a582-c264d3e0945e\n        act_id = 019c9975-90d3-7288-961b-fbb0cfb3f6e8\n        num_steps_executed = 0\n        start_time = 2026-02-26 15:49:43.584797 India Standard Time\n        end_time = 2026-02-26 15:49:47.520660 India Standard Time\n        time_worked = 3.9s\n        prompt = 'Wait for the page to fully load and scroll to the top.'\n    )\n)\n\nPlease consider providing feedback: https://amazonexteu.qualtrics.com/jfe/form/SV_bd8dHa7Em6kNkMe"}
+{"timestamp": "2026-02-26T15:49:49.759920", "action": "tier2_playwright", "status": "attempting", "attempt": 1}
+{"timestamp": "2026-02-26T15:49:49.759920", "action": "tier2_playwright", "status": "failed", "attempt": 1, "error": "It looks like you are using Playwright Sync API inside the asyncio loop.\nPlease use the Async API instead."}
+{"timestamp": "2026-02-26T15:49:50.761285", "action": "tier2_playwright", "status": "attempting", "attempt": 2}
+{"timestamp": "2026-02-26T15:49:50.761285", "action": "tier2_playwright", "status": "failed", "attempt": 2, "error": "It looks like you are using Playwright Sync API inside the asyncio loop.\nPlease use the Async API instead."}
+{"timestamp": "2026-02-26T15:49:50.762292", "action": "test_end", "status": "engine_failure"}
+{"timestamp": "2026-02-26T15:53:27.105231", "action": "test_start", "url": "https://bbc.com", "test_type": "wcag"}
+{"timestamp": "2026-02-26T15:53:28.649674", "action": "tier1_novaact", "status": "attempting", "url": "https://bbc.com"}
+{"timestamp": "2026-02-26T15:54:05.454903", "action": "tier1_novaact", "status": "failed", "error": "Timeout 15000ms exceeded."}
+{"timestamp": "2026-02-26T15:54:06.320337", "action": "tier2_playwright", "status": "attempting"}
+{"timestamp": "2026-02-26T15:54:19.590570", "action": "tier2_playwright", "status": "success"}
+{"timestamp": "2026-02-26T15:54:25.038732", "action": "bedrock_analysis", "status": "success", "issue_count": 3}
+{"timestamp": "2026-02-26T15:54:25.039732", "action": "test_end", "status": "success", "issue_count": 3, "score": 88}
+{"timestamp": "2026-02-26T15:59:40.171025", "action": "test_start", "url": "https://bbc.com", "test_type": "wcag"}
+{"timestamp": "2026-02-26T15:59:41.256792", "action": "tier1_novaact", "status": "attempting", "url": "https://bbc.com"}
+{"timestamp": "2026-02-26T16:00:12.747444", "action": "tier1_novaact", "status": "failed", "error": "Timeout 15000ms exceeded."}
+{"timestamp": "2026-02-26T16:00:12.747444", "action": "tier2_playwright", "status": "attempting"}
+{"timestamp": "2026-02-26T16:00:21.373537", "action": "tier2_playwright", "status": "success"}
+{"timestamp": "2026-02-26T16:00:26.551028", "action": "bedrock_analysis", "status": "success", "issue_count": 3}
+{"timestamp": "2026-02-26T16:00:26.553025", "action": "test_end", "status": "success", "issue_count": 3, "score": 88}
+{"timestamp": "2026-02-26T17:47:59.847137", "action": "test_start", "url": "https://github.com", "test_type": "wcag"}
+{"timestamp": "2026-02-26T17:48:01.823889", "action": "tier1_novaact", "status": "attempting", "url": "https://github.com"}
+{"timestamp": "2026-02-26T17:48:22.138405", "action": "tier1_novaact", "status": "success"}
+{"timestamp": "2026-02-26T17:48:28.298540", "action": "bedrock_analysis", "status": "success", "model": "amazon.nova-pro-v1:0", "issue_count": 1}
+{"timestamp": "2026-02-26T17:48:28.300083", "action": "test_end", "status": "success", "model": "amazon.nova-pro-v1:0", "issue_count": 1, "score": 95}
