@@ -1,0 +1,6 @@
+pytest
+playwright
+boto3
+nova-act
+pytest-html
+python-dotenv
