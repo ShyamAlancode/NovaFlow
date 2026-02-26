@@ -7,6 +7,10 @@ import sys
 import io
 import json
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load .env file FIRST so all env vars are available
+load_dotenv()
 
 # Prevent Windows terminal crashes from Nova's emojis
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -30,31 +34,36 @@ def run_demo_test():
         export_results(False, "nova_act not installed")
         return
 
-    client = NovaAct(starting_page=url)
+    nova_act_api_key = os.getenv('NOVA_ACT_API_KEY')
+    if not nova_act_api_key or nova_act_api_key == 'PASTE_YOUR_KEY_HERE':
+        print("ERROR: NOVA_ACT_API_KEY not set in your .env file.")
+        print("Get your key at: https://nova.amazon.com/act?tab=dev_tools")
+        export_results(False, "NOVA_ACT_API_KEY not configured")
+        return
+
+    client = NovaAct(starting_page=url, nova_act_api_key=nova_act_api_key)
     client.start()
 
     try:
         print("Agent is analyzing the DOM and taking action...")
 
         # Positional argument only — NovaAct does NOT accept `prompt=`
-        response = client.act(
+        result = client.act(
             instruction,
             max_steps=15
         )
 
-        success = response.success
-        message = response.message
-
-        if success:
-            print(f"\nSWARM SUCCESS: {message}")
-        else:
-            print(f"\nSWARM INCOMPLETE: {message}")
-
-        export_results(success, message)
+        # Success = no exception was raised + steps were executed
+        steps = result.metadata.num_steps_executed
+        time_worked = result.metadata.time_worked_s if hasattr(result.metadata, 'time_worked_s') else "unknown"
+        message = f"Agent completed in {time_worked} across {steps} step(s)."
+        print(f"\nSWARM SUCCESS: {message}")
+        export_results(True, message)
 
     except Exception as e:
-        print(f"\nCRITICAL ERROR: {str(e)}")
-        export_results(False, f"System Crash: {str(e)}")
+        message = f"Agent error: {str(e)}"
+        print(f"\nCRITICAL ERROR: {message}")
+        export_results(False, message)
     finally:
         client.stop()
         print("Browser session closed.")
